@@ -1,5 +1,5 @@
-from ._core import add
+from ._core import add, linespace, mean
 
 __version__ = "0.1.0"
 
-__all__ = ["add", "__version__"]
+__all__ = ["add", "linespace", "mean", "__version__"]
