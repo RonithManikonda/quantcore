@@ -1,16 +1,14 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core>=0.12", "pybind11"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "quantcore"
 version = "0.1.0"
-description = "Quant finance Python package with a C++ backend"
+description = "Python library with C++ Computer Kernels"
 readme = "README.md"
 requires-python = ">=3.10"
 
-[tool.setuptools]
-package-dir = {"" = "src/python"}
-
-[tool.setuptools.packages.find]
-where = ["src/python"]
+[tool.scikit-build]
+wheel.packages = ["src/python/quantcore"]
+editable.mode = "redirect"
