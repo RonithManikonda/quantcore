@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantcore"
+version = "0.1.0"
+description = "Statistical Models and Simulation for Quantitative Finance"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src/python"]
