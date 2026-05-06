@@ -1,5 +1,5 @@
-from ._core import add, linespace, mean
+from .stochastic import brownian_paths, brownian_increments
 
 __version__ = "0.1.0"
 
-__all__ = ["add", "linespace", "mean", "__version__"]
+__all__ = ["brownian_paths", "brownian_increments", "__version__"]

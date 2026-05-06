@@ -8,7 +8,7 @@ find_package(pybind11 CONFIG REQUIRED)
 
 pybind11_add_module(_core
     src/cpp/binding.cpp
-    src/cpp/simple.cpp
+    src/cpp/brownian.cpp
 )
 
 install(TARGETS _core DESTINATION quantcore)
