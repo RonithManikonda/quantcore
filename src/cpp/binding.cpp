@@ -4,6 +4,7 @@
 
 #include "brownian.hpp"
 #include "gbm.hpp"
+#include "pricing.hpp"
 
 namespace py = pybind11;
 
@@ -137,4 +138,31 @@ PYBIND11_MODULE(_core, m) {
         py::arg("seed")  = 0,
         "Simulate terminal GBM values S(T) from the closed-form lognormal law.\n\n"
         "Returns a 1D numpy array of length n_paths.");
+
+    // -----------------------------------------------------------------------
+    // Option pricing
+    // -----------------------------------------------------------------------
+
+    m.def("black_scholes_price", &black_scholes_price,
+        py::arg("s0"),
+        py::arg("K"),
+        py::arg("r"),
+        py::arg("sigma"),
+        py::arg("T"),
+        py::arg("is_call"),
+        "Closed-form Black-Scholes price of a European option.\n\n"
+        "is_call = True for a call, False for a put.");
+
+    m.def("mc_european_price", &mc_european_price,
+        py::arg("s0"),
+        py::arg("K"),
+        py::arg("r"),
+        py::arg("sigma"),
+        py::arg("T"),
+        py::arg("n_paths"),
+        py::arg("is_call"),
+        py::arg("seed")       = 0,
+        py::arg("antithetic") = true,
+        "Monte Carlo price of a European option under the risk-neutral measure.\n\n"
+        "Returns a (price, standard_error) tuple.");
 }

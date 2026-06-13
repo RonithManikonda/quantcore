@@ -11,6 +11,7 @@ pybind11_add_module(_core
     src/cpp/binding.cpp
     src/cpp/brownian.cpp
     src/cpp/gbm.cpp
+    src/cpp/pricing.cpp
 )
 
 target_link_libraries(_core PRIVATE Threads::Threads)
