@@ -16,6 +16,17 @@ from .markov import (
     markov_chain,
     stationary_distribution,
 )
+from .stats import (
+    mean,
+    variance,
+    std,
+    covariance,
+    correlation,
+    linear_regression,
+    confidence_interval,
+    RegressionResult,
+    ConfidenceInterval,
+)
 
 __version__ = "0.1.0"
 
@@ -36,5 +47,15 @@ __all__ = [
     # Markov chains
     "markov_chain",
     "stationary_distribution",
+    # Statistics
+    "mean",
+    "variance",
+    "std",
+    "covariance",
+    "correlation",
+    "linear_regression",
+    "confidence_interval",
+    "RegressionResult",
+    "ConfidenceInterval",
     "__version__",
 ]

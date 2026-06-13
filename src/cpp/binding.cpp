@@ -6,6 +6,7 @@
 #include "gbm.hpp"
 #include "pricing.hpp"
 #include "markov.hpp"
+#include "stats.hpp"
 
 namespace py = pybind11;
 
@@ -50,6 +51,19 @@ static std::vector<std::vector<double>> numpy_to_matrix(
     for (py::ssize_t i = 0; i < rows; ++i)
         for (py::ssize_t j = 0; j < cols; ++j)
             out[i][j] = buf(i, j);
+    return out;
+}
+
+// Convert a 1D numpy array (any numeric dtype) into a std::vector<double>.
+static std::vector<double> numpy_to_vector(
+    py::array_t<double, py::array::c_style | py::array::forcecast> arr) {
+    if (arr.ndim() != 1)
+        throw std::invalid_argument("expected a 1D array");
+    auto buf = arr.unchecked<1>();
+    py::ssize_t n = arr.shape(0);
+    std::vector<double> out(n);
+    for (py::ssize_t i = 0; i < n; ++i)
+        out[i] = buf(i);
     return out;
 }
 
@@ -204,4 +218,60 @@ PYBIND11_MODULE(_core, m) {
         "Simulate discrete-time Markov chains over a finite state space.\n\n"
         "P is a row-stochastic transition matrix. Returns an int array of\n"
         "shape (n_chains, n_steps + 1); column 0 is start_state.");
+
+    // -----------------------------------------------------------------------
+    // Statistics utilities (take array input, compute in C++)
+    // -----------------------------------------------------------------------
+
+    m.def("stat_mean",
+        [](py::array_t<double, py::array::c_style | py::array::forcecast> x) {
+            return stat_mean(numpy_to_vector(x));
+        },
+        py::arg("x"), "Sample mean of a 1D array.");
+
+    m.def("stat_variance",
+        [](py::array_t<double, py::array::c_style | py::array::forcecast> x, int ddof) {
+            return stat_variance(numpy_to_vector(x), ddof);
+        },
+        py::arg("x"), py::arg("ddof") = 0, "Variance with `ddof` degrees of freedom.");
+
+    m.def("stat_std",
+        [](py::array_t<double, py::array::c_style | py::array::forcecast> x, int ddof) {
+            return stat_std(numpy_to_vector(x), ddof);
+        },
+        py::arg("x"), py::arg("ddof") = 0, "Standard deviation with `ddof` degrees of freedom.");
+
+    m.def("covariance_matrix",
+        [](py::array_t<double, py::array::c_style | py::array::forcecast> X, int ddof) {
+            return to_numpy_2d(covariance_matrix(numpy_to_matrix(X), ddof));
+        },
+        py::arg("X"), py::arg("ddof") = 1,
+        "Covariance matrix of X (observations in rows, variables in columns).");
+
+    m.def("correlation_matrix",
+        [](py::array_t<double, py::array::c_style | py::array::forcecast> X) {
+            return to_numpy_2d(correlation_matrix(numpy_to_matrix(X)));
+        },
+        py::arg("X"), "Pearson correlation matrix of X (observations in rows).");
+
+    m.def("linear_regression",
+        [](py::array_t<double, py::array::c_style | py::array::forcecast> X,
+           py::array_t<double, py::array::c_style | py::array::forcecast> y,
+           bool fit_intercept) {
+            RegressionResult res = linear_regression(
+                numpy_to_matrix(X), numpy_to_vector(y), fit_intercept);
+            return py::make_tuple(res.intercept,
+                                  to_numpy_1d(res.coefficients),
+                                  res.r_squared);
+        },
+        py::arg("X"), py::arg("y"), py::arg("fit_intercept") = true,
+        "Ordinary least squares fit. Returns (intercept, coefficients, r_squared).");
+
+    m.def("mean_confidence_interval",
+        [](py::array_t<double, py::array::c_style | py::array::forcecast> x, double confidence) {
+            return mean_confidence_interval(numpy_to_vector(x), confidence);
+        },
+        py::arg("x"), py::arg("confidence") = 0.95,
+        "Two-sided normal-approximation confidence interval for the mean.\n\n"
+        "Returns a (low, high) tuple.");
 }

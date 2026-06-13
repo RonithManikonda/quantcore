@@ -13,6 +13,7 @@ pybind11_add_module(_core
     src/cpp/gbm.cpp
     src/cpp/pricing.cpp
     src/cpp/markov.cpp
+    src/cpp/stats.cpp
 )
 
 target_link_libraries(_core PRIVATE Threads::Threads)
