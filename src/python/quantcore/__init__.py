@@ -12,6 +12,10 @@ from .pricing import (
     mc_european,
     MCResult,
 )
+from .markov import (
+    markov_chain,
+    stationary_distribution,
+)
 
 __version__ = "0.1.0"
 
@@ -29,5 +33,8 @@ __all__ = [
     "black_scholes",
     "mc_european",
     "MCResult",
+    # Markov chains
+    "markov_chain",
+    "stationary_distribution",
     "__version__",
 ]

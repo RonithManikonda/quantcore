@@ -5,18 +5,21 @@
 #include "brownian.hpp"
 #include "gbm.hpp"
 #include "pricing.hpp"
+#include "markov.hpp"
 
 namespace py = pybind11;
 
 // Convert a 2D vector-of-vectors (row-major) to a contiguous numpy array.
-// The C++ functions return std::vector<std::vector<double>> so that they stay
+// The C++ functions return std::vector<std::vector<T>> so that they stay
 // independent of pybind11; this helper does the conversion at the boundary.
-static py::array_t<double> to_numpy_2d(const std::vector<std::vector<double>>& data) {
-    if (data.empty()) return py::array_t<double>({0, 0});
+// Templated on T so it serves both double (simulations) and int (Markov states).
+template <typename T>
+static py::array_t<T> to_numpy_2d(const std::vector<std::vector<T>>& data) {
+    if (data.empty()) return py::array_t<T>({py::ssize_t(0), py::ssize_t(0)});
     py::ssize_t rows = static_cast<py::ssize_t>(data.size());
     py::ssize_t cols = static_cast<py::ssize_t>(data[0].size());
-    py::array_t<double> arr({rows, cols});
-    auto buf = arr.mutable_unchecked<2>();
+    py::array_t<T> arr({rows, cols});
+    auto buf = arr.template mutable_unchecked<2>();
     for (py::ssize_t i = 0; i < rows; ++i)
         for (py::ssize_t j = 0; j < cols; ++j)
             buf(i, j) = data[i][j];
@@ -31,6 +34,23 @@ static py::array_t<double> to_numpy_1d(const std::vector<double>& data) {
     for (py::ssize_t i = 0; i < n; ++i)
         buf(i) = data[i];
     return arr;
+}
+
+// Convert a 2D numpy array (any numeric dtype, contiguous or not — forcecast
+// handles the conversion) into a row-major vector-of-vectors of doubles, for
+// the routines that take a matrix as input (Markov P, stats data matrices).
+static std::vector<std::vector<double>> numpy_to_matrix(
+    py::array_t<double, py::array::c_style | py::array::forcecast> arr) {
+    if (arr.ndim() != 2)
+        throw std::invalid_argument("expected a 2D array");
+    auto buf = arr.unchecked<2>();
+    py::ssize_t rows = arr.shape(0);
+    py::ssize_t cols = arr.shape(1);
+    std::vector<std::vector<double>> out(rows, std::vector<double>(cols));
+    for (py::ssize_t i = 0; i < rows; ++i)
+        for (py::ssize_t j = 0; j < cols; ++j)
+            out[i][j] = buf(i, j);
+    return out;
 }
 
 PYBIND11_MODULE(_core, m) {
@@ -165,4 +185,23 @@ PYBIND11_MODULE(_core, m) {
         py::arg("antithetic") = true,
         "Monte Carlo price of a European option under the risk-neutral measure.\n\n"
         "Returns a (price, standard_error) tuple.");
+
+    // -----------------------------------------------------------------------
+    // Markov chains
+    // -----------------------------------------------------------------------
+
+    m.def("simulate_markov",
+        [](py::array_t<double, py::array::c_style | py::array::forcecast> P,
+           int n_steps, int n_chains, int start_state, uint64_t seed) {
+            return to_numpy_2d(simulate_markov(
+                numpy_to_matrix(P), n_steps, n_chains, start_state, seed));
+        },
+        py::arg("P"),
+        py::arg("n_steps"),
+        py::arg("n_chains")    = 1,
+        py::arg("start_state") = 0,
+        py::arg("seed")        = 0,
+        "Simulate discrete-time Markov chains over a finite state space.\n\n"
+        "P is a row-stochastic transition matrix. Returns an int array of\n"
+        "shape (n_chains, n_steps + 1); column 0 is start_state.");
 }
