@@ -4,6 +4,9 @@ from quantcore._core import simulate_paths as _simulate_paths
 from quantcore._core import simulate_increments as _simulate_increments
 from quantcore._core import simulate_paths_parallel as _simulate_paths_parallel
 from quantcore._core import simulate_increments_parallel as _simulate_increments_parallel
+from quantcore._core import simulate_gbm_paths as _simulate_gbm_paths
+from quantcore._core import simulate_gbm_paths_parallel as _simulate_gbm_paths_parallel
+from quantcore._core import simulate_gbm_terminal as _simulate_gbm_terminal
 
 
 def brownian_paths(
@@ -143,3 +146,117 @@ def brownian_increments_parallel(
         Shape ``(n_paths, n_steps)``, dtype float64.
     """
     return _simulate_increments_parallel(n_steps, n_paths, dt, sigma, seed, n_threads)
+
+
+# ---------------------------------------------------------------------------
+# Geometric Brownian motion
+# ---------------------------------------------------------------------------
+
+
+def gbm_paths(
+    n_steps: int,
+    n_paths: int,
+    dt: float,
+    mu: float = 0.0,
+    sigma: float = 1.0,
+    s0: float = 1.0,
+    seed: int = 0,
+) -> np.ndarray:
+    """
+    Simulate geometric Brownian motion (GBM) price paths.
+
+    GBM is the standard model for asset prices under Black-Scholes assumptions::
+
+        dS = mu * S dt + sigma * S dW
+
+    The exact (bias-free) discretisation is used::
+
+        S_{k+1} = S_k * exp((mu - 0.5 * sigma**2) * dt + sigma * sqrt(dt) * Z)
+
+    Parameters
+    ----------
+    n_steps : int
+        Number of time steps per path. Must be > 0.
+    n_paths : int
+        Number of independent paths. Must be > 0.
+    dt : float
+        Length of each time step. Must be > 0.
+    mu : float
+        Drift (annualised). May be negative. Default 0.0.
+    sigma : float
+        Volatility. Must be >= 0. Default 1.0.
+    s0 : float
+        Initial price. Must be > 0. Default 1.0.
+    seed : int
+        RNG seed. Same seed + arguments reproduce the output. Default 0.
+
+    Returns
+    -------
+    np.ndarray
+        Shape ``(n_paths, n_steps + 1)``, dtype float64.
+        Each row is one path; column 0 is always ``s0``.
+    """
+    return _simulate_gbm_paths(n_steps, n_paths, dt, mu, sigma, s0, seed)
+
+
+def gbm_paths_parallel(
+    n_steps: int,
+    n_paths: int,
+    dt: float,
+    mu: float = 0.0,
+    sigma: float = 1.0,
+    s0: float = 1.0,
+    seed: int = 0,
+    n_threads: int = 0,
+) -> np.ndarray:
+    """
+    Multithreaded geometric Brownian motion paths.
+
+    Same output contract as :func:`gbm_paths`. Deterministic for a given
+    ``(seed, n_threads)`` pair; ``n_threads=0`` auto-detects the core count.
+
+    Returns
+    -------
+    np.ndarray
+        Shape ``(n_paths, n_steps + 1)``, dtype float64.
+    """
+    return _simulate_gbm_paths_parallel(
+        n_steps, n_paths, dt, mu, sigma, s0, seed, n_threads)
+
+
+def gbm_terminal(
+    n_paths: int,
+    T: float,
+    mu: float = 0.0,
+    sigma: float = 1.0,
+    s0: float = 1.0,
+    seed: int = 0,
+) -> np.ndarray:
+    """
+    Simulate only the terminal prices ``S(T)``.
+
+    Draws directly from the closed-form lognormal distribution of ``S(T)``
+    instead of stepping through time, so it uses one value per path. This is
+    the natural, memory-light input for Monte Carlo option pricing.
+
+    Parameters
+    ----------
+    n_paths : int
+        Number of independent samples. Must be > 0.
+    T : float
+        Time horizon (in the same units as ``mu`` and ``sigma``). Must be > 0.
+    mu : float
+        Drift. May be negative. Default 0.0.
+    sigma : float
+        Volatility. Must be >= 0. Default 1.0.
+    s0 : float
+        Initial price. Must be > 0. Default 1.0.
+    seed : int
+        RNG seed. Default 0.
+
+    Returns
+    -------
+    np.ndarray
+        Shape ``(n_paths,)``, dtype float64.
+    """
+    return _simulate_gbm_terminal(n_paths, T, mu, sigma, s0, seed)

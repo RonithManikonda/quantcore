@@ -1,13 +1,13 @@
 #include "brownian.hpp"
 #include "rng.hpp"
 #include "utils.hpp"
+#include "parallel.hpp"  // resolve_n_threads
 
 #include <random>    // std::normal_distribution, std::mt19937_64
 #include <cmath>     // std::sqrt
 #include <cstdint>   // uint64_t
 #include <vector>
-#include <thread>    // std::thread, std::thread::hardware_concurrency()
-#include <algorithm> // std::min
+#include <thread>    // std::thread
 
 std::vector<std::vector<double>> simulate_paths(
     int n_steps, int n_paths, double dt, double sigma, uint64_t seed)
@@ -123,22 +123,6 @@ void increments_worker(
 // ---------------------------------------------------------------------------
 // Parallel entry points
 // ---------------------------------------------------------------------------
-
-namespace {
-
-// Resolve a usable worker-thread count:
-//   n_threads <= 0  -> auto-detect via hardware_concurrency()
-//   still 0         -> fall back to 4 (some platforms report 0)
-//   never exceed n_paths (one path per thread is the finest useful split)
-int resolve_n_threads(int n_threads, int n_paths) {
-    if (n_threads <= 0)
-        n_threads = static_cast<int>(std::thread::hardware_concurrency());
-    if (n_threads <= 0)
-        n_threads = 4;
-    return std::min(n_threads, n_paths);
-}
-
-}  // namespace
 
 std::vector<std::vector<double>> simulate_paths_parallel(
     int n_steps, int n_paths, double dt, double sigma, uint64_t seed,
