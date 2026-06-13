@@ -16,10 +16,14 @@ namespace py = pybind11;
 // Templated on T so it serves both double (simulations) and int (Markov states).
 template <typename T>
 static py::array_t<T> to_numpy_2d(const std::vector<std::vector<T>>& data) {
-    if (data.empty()) return py::array_t<T>({py::ssize_t(0), py::ssize_t(0)});
+    // Use an explicit shape container: GCC finds py::array_t<T>({a, b}) with a
+    // brace-enclosed list of ssize_t ambiguous between array_t's constructors,
+    // while a std::vector<ssize_t> resolves to the shape constructor cleanly on
+    // every compiler.
+    if (data.empty()) return py::array_t<T>(std::vector<py::ssize_t>{0, 0});
     py::ssize_t rows = static_cast<py::ssize_t>(data.size());
     py::ssize_t cols = static_cast<py::ssize_t>(data[0].size());
-    py::array_t<T> arr({rows, cols});
+    py::array_t<T> arr(std::vector<py::ssize_t>{rows, cols});
     auto buf = arr.template mutable_unchecked<2>();
     for (py::ssize_t i = 0; i < rows; ++i)
         for (py::ssize_t j = 0; j < cols; ++j)
