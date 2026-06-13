@@ -83,7 +83,15 @@ void paths_worker(
     int n_steps, double dt, double sigma,
     uint64_t seed, int thread_id)
 {
-    // TODO: implement
+    auto rng = make_thread_rng(seed, thread_id);
+    std::normal_distribution<double> dist(0.0, sigma * std::sqrt(dt));
+
+    for (int i = start; i < end; ++i) {
+        result[i][0] = 0.0;
+        for (int j = 1; j <= n_steps; ++j) {
+            result[i][j] = result[i][j - 1] + dist(rng);
+        }
+    }
 }
 
 // Worker for simulate_increments_parallel.
@@ -102,49 +110,82 @@ void increments_worker(
     int n_steps, double dt, double sigma,
     uint64_t seed, int thread_id)
 {
-    // TODO: implement
+    auto rng = make_thread_rng(seed, thread_id);
+    std::normal_distribution<double> dist(0.0, sigma * std::sqrt(dt));
+
+    for (int i = start; i < end; ++i) {
+        for (int j = 0; j < n_steps; ++j) {
+            result[i][j] = dist(rng);
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Parallel entry points
 // ---------------------------------------------------------------------------
 
-// TODO: implement simulate_paths_parallel
-//
-// Steps:
-//   1. Call validate_brownian_params(n_steps, n_paths, dt, sigma).
-//   2. Resolve n_threads:
-//        if n_threads <= 0, set it to (int)std::thread::hardware_concurrency().
-//        if still 0 (hardware_concurrency can return 0), fall back to 4.
-//        cap it at n_paths — no point having more threads than paths.
-//   3. Allocate result: [n_paths][n_steps + 1] (same shape as single-threaded).
-//   4. Calculate chunk = n_paths / n_threads (integer division).
-//   5. Create a std::vector<std::thread> and reserve n_threads slots.
-//   6. Loop t from 0 to n_threads (exclusive):
-//        start = t * chunk
-//        end   = (t == n_threads - 1) ? n_paths : start + chunk
-//        emplace_back a thread that calls paths_worker(result, start, end,
-//            n_steps, dt, sigma, seed, t)
-//        Remember to pass result with std::ref(result).
-//   7. Join every thread in the vector.
-//   8. Return result.
+namespace {
+
+// Resolve a usable worker-thread count:
+//   n_threads <= 0  -> auto-detect via hardware_concurrency()
+//   still 0         -> fall back to 4 (some platforms report 0)
+//   never exceed n_paths (one path per thread is the finest useful split)
+int resolve_n_threads(int n_threads, int n_paths) {
+    if (n_threads <= 0)
+        n_threads = static_cast<int>(std::thread::hardware_concurrency());
+    if (n_threads <= 0)
+        n_threads = 4;
+    return std::min(n_threads, n_paths);
+}
+
+}  // namespace
+
 std::vector<std::vector<double>> simulate_paths_parallel(
     int n_steps, int n_paths, double dt, double sigma, uint64_t seed,
     int n_threads)
 {
-    // TODO: implement
-    return {};
+    validate_brownian_params(n_steps, n_paths, dt, sigma);
+
+    n_threads = resolve_n_threads(n_threads, n_paths);
+
+    std::vector<std::vector<double>> result(n_paths, std::vector<double>(n_steps + 1));
+
+    const int chunk = n_paths / n_threads;
+
+    std::vector<std::thread> threads;
+    threads.reserve(n_threads);
+    for (int t = 0; t < n_threads; ++t) {
+        const int start = t * chunk;
+        const int end   = (t == n_threads - 1) ? n_paths : start + chunk;
+        threads.emplace_back(paths_worker, std::ref(result), start, end,
+                             n_steps, dt, sigma, seed, t);
+    }
+    for (auto& th : threads) th.join();
+
+    return result;
 }
 
-// TODO: implement simulate_increments_parallel
-//
-// Identical structure to simulate_paths_parallel, but:
-//   - result shape is [n_paths][n_steps]  (no +1 column)
-//   - launch increments_worker instead of paths_worker
 std::vector<std::vector<double>> simulate_increments_parallel(
     int n_steps, int n_paths, double dt, double sigma, uint64_t seed,
     int n_threads)
 {
-    // TODO: implement
-    return {};
+    validate_brownian_params(n_steps, n_paths, dt, sigma);
+
+    n_threads = resolve_n_threads(n_threads, n_paths);
+
+    std::vector<std::vector<double>> result(n_paths, std::vector<double>(n_steps));
+
+    const int chunk = n_paths / n_threads;
+
+    std::vector<std::thread> threads;
+    threads.reserve(n_threads);
+    for (int t = 0; t < n_threads; ++t) {
+        const int start = t * chunk;
+        const int end   = (t == n_threads - 1) ? n_paths : start + chunk;
+        threads.emplace_back(increments_worker, std::ref(result), start, end,
+                             n_steps, dt, sigma, seed, t);
+    }
+    for (auto& th : threads) th.join();
+
+    return result;
 }
