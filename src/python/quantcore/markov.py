@@ -75,8 +75,13 @@ def stationary_distribution(P) -> np.ndarray:
     eigvals, eigvecs = np.linalg.eig(P.T)
     idx = int(np.argmin(np.abs(eigvals - 1.0)))
     pi = np.real(eigvecs[:, idx])
-    pi = np.clip(pi, 0.0, None)
+
+    # Eigenvectors are only defined up to a scale, so numpy may hand back the
+    # all-negative version. Normalise by the sum first (which fixes the sign),
+    # then clip away any tiny negative numerical noise and renormalise.
     total = pi.sum()
-    if total == 0.0:
+    if abs(total) < 1e-12:
         raise ValueError("could not find a valid stationary distribution")
-    return pi / total
+    pi = pi / total
+    pi = np.clip(pi, 0.0, None)
+    return pi / pi.sum()

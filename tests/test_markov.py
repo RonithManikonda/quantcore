@@ -105,6 +105,18 @@ def test_stationary_distribution_matches_known():
     assert pi.sum() == pytest.approx(1.0)
 
 
+def test_stationary_distribution_three_state_is_valid():
+    # A 3-state chain whose Perron eigenvector numpy returns sign-flipped:
+    # pi must still come back non-negative, normalised, and fixed by pi @ P.
+    P = np.array([[0.70, 0.20, 0.10],
+                  [0.30, 0.40, 0.30],
+                  [0.20, 0.45, 0.35]])
+    pi = stationary_distribution(P)
+    assert np.all(pi >= 0.0)
+    assert pi.sum() == pytest.approx(1.0)
+    np.testing.assert_allclose(pi @ P, pi, atol=1e-9)  # stationarity
+
+
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
