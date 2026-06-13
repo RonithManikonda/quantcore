@@ -48,4 +48,32 @@ PYBIND11_MODULE(_core, m) {
         py::arg("seed")  = 0,
         "Simulate Brownian motion increments dW ~ N(0, sigma^2 * dt).\n\n"
         "Returns a numpy array of shape (n_paths, n_steps).");
+
+    m.def("simulate_paths_parallel",
+        [](int n_steps, int n_paths, double dt, double sigma, uint64_t seed, int n_threads) {
+            return to_numpy_2d(simulate_paths_parallel(n_steps, n_paths, dt, sigma, seed, n_threads));
+        },
+        py::arg("n_steps"),
+        py::arg("n_paths"),
+        py::arg("dt"),
+        py::arg("sigma")     = 1.0,
+        py::arg("seed")      = 0,
+        py::arg("n_threads") = 0,
+        "Multithreaded Brownian motion paths.\n\n"
+        "Same output as simulate_paths. n_threads=0 auto-detects core count.\n"
+        "Returns a numpy array of shape (n_paths, n_steps + 1).");
+
+    m.def("simulate_increments_parallel",
+        [](int n_steps, int n_paths, double dt, double sigma, uint64_t seed, int n_threads) {
+            return to_numpy_2d(simulate_increments_parallel(n_steps, n_paths, dt, sigma, seed, n_threads));
+        },
+        py::arg("n_steps"),
+        py::arg("n_paths"),
+        py::arg("dt"),
+        py::arg("sigma")     = 1.0,
+        py::arg("seed")      = 0,
+        py::arg("n_threads") = 0,
+        "Multithreaded Brownian motion increments.\n\n"
+        "Same output as simulate_increments. n_threads=0 auto-detects core count.\n"
+        "Returns a numpy array of shape (n_paths, n_steps).");
 }

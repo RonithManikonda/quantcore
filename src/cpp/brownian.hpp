@@ -3,6 +3,10 @@
 #include <vector>
 #include <cstdint>
 
+// ---------------------------------------------------------------------------
+// Single-threaded
+// ---------------------------------------------------------------------------
+
 // Simulate n_paths independent Brownian motion paths, each with n_steps time steps.
 //
 // Parameters:
@@ -25,3 +29,23 @@ std::vector<std::vector<double>> simulate_paths(
 //   To reconstruct a full path: cumsum along each row and prepend 0.
 std::vector<std::vector<double>> simulate_increments(
     int n_steps, int n_paths, double dt, double sigma, uint64_t seed);
+
+// ---------------------------------------------------------------------------
+// Multithreaded
+// ---------------------------------------------------------------------------
+
+// Same output contract as simulate_paths, but work is split across n_threads
+// parallel threads. Each thread gets its own RNG derived from seed so the
+// result is still fully deterministic for a given (seed, n_threads) pair.
+//
+// n_threads = 0 → use std::thread::hardware_concurrency() (auto-detect cores)
+std::vector<std::vector<double>> simulate_paths_parallel(
+    int n_steps, int n_paths, double dt, double sigma, uint64_t seed,
+    int n_threads = 0);
+
+// Same output contract as simulate_increments, parallelised across threads.
+//
+// n_threads = 0 → auto-detect
+std::vector<std::vector<double>> simulate_increments_parallel(
+    int n_steps, int n_paths, double dt, double sigma, uint64_t seed,
+    int n_threads = 0);
